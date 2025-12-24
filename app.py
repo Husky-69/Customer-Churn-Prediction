@@ -61,55 +61,62 @@ with st.form("churn_form"):
 
 # Prediction logic
 if submitted:
-    model = load_model()
+    try:
+        model = load_model()
+        
+        # Encode categorical features (MUST match training!)
+        international_plan_encoded = 1 if international_plan == "Yes" else 0
+        voice_mail_plan_encoded = 1 if voice_mail_plan == "Yes" else 0
 
-    # Convert inputs to match model expectations
-    input_data = pd.DataFrame({
-        'State': [state],
-        'Account length': [account_length],
-        'Area code': [area_code],
-        'International plan': [international_plan],
-        'Voice mail plan': [voice_mail_plan],
-        'Number vmail messages': [num_vmail_messages],
-        'Total day minutes': [total_day_minutes],
-        'Total day calls': [total_day_calls],
-        'Total day charge': [total_day_charge],
-        'Total eve minutes': [total_eve_minutes],
-        'Total eve calls': [total_eve_calls],
-        'Total eve charge': [total_eve_charge],
-        'Total night minutes': [total_night_minutes],
-        'Total night calls': [total_night_calls],
-        'Total night charge': [total_night_charge],
-        'Total intl minutes': [total_intl_minutes],
-        'Total intl calls': [total_intl_calls],
-        'Total intl charge': [total_intl_charge],
-        'Customer service calls': [customer_service_calls]
-    })
+        # Encode State using saved encoder
+        le_state = joblib.load('state_encoder.pkl')
+        state_encoded = le_state.transform([state])[0]
 
-    # Ensure column order matches training data
-    input_data = input_data[[
-        'State', 'Account length', 'Area code', 'International plan', 'Voice mail plan',
-        'Number vmail messages', 'Total day minutes', 'Total day calls', 'Total day charge',
-        'Total eve minutes', 'Total eve calls', 'Total eve charge', 'Total night minutes',
-        'Total night calls', 'Total night charge', 'Total intl minutes', 'Total intl calls',
-        'Total intl charge', 'Customer service calls'
-    ]]
+        # Create input DataFrame with NUMERIC values only
+        input_data = pd.DataFrame({
+            'State': [state_encoded],
+            'Account length': [account_length],
+            'Area code': [area_code],
+            'International plan': [international_plan_encoded],
+            'Voice mail plan': [voice_mail_plan_encoded],
+            'Number vmail messages': [num_vmail_messages],
+            'Total day minutes': [total_day_minutes],
+            'Total day calls': [total_day_calls],
+            'Total day charge': [total_day_charge],
+            'Total eve minutes': [total_eve_minutes],
+            'Total eve calls': [total_eve_calls],
+            'Total eve charge': [total_eve_charge],
+            'Total night minutes': [total_night_minutes],
+            'Total night calls': [total_night_calls],
+            'Total night charge': [total_night_charge],
+            'Total intl minutes': [total_intl_minutes],
+            'Total intl calls': [total_intl_calls],
+            'Total intl charge': [total_intl_charge],
+            'Customer service calls': [customer_service_calls]
+        })
 
-    # Make prediction
-    churn_proba = model.predict_proba(input_data)[0][1]
-    churn_pred = model.predict(input_data)[0]
+        # Ensure column order matches training data
+        input_data = input_data[model.feature_names_in_]  # ← CRITICAL!
 
-    # Display result
-    st.subheader("Prediction Result")
-    if churn_proba > 0.5:
-        st.error(f"🚨 High Churn Risk: {churn_proba:.2%} probability of churn")
-        st.markdown("**Recommendation:** Offer retention incentives or schedule a check-in call.")
-    else:
-        st.success(f"✅ Low Churn Risk: {churn_proba:.2%} probability of churn")
-        st.markdown("**Recommendation:** Continue standard service. Monitor for changes in behavior.")
+        # Make prediction
+        churn_proba = model.predict_proba(input_data)[0][1]
+        churn_pred = model.predict(input_data)[0]
 
-    st.info("Model: XGBoost (Tuned) | AUC: 0.94")
+        # Display result
+        st.subheader("Prediction Result")
+        if churn_proba > 0.5:
+            st.error(f"🚨 High Churn Risk: {churn_proba:.2%} probability of churn")
+            st.markdown("**Recommendation:** Offer retention incentives or schedule a check-in call.")
+        else:
+            st.success(f"✅ Low Churn Risk: {churn_proba:.2%} probability of churn")
+            st.markdown("**Recommendation:** Continue standard service. Monitor for changes in behavior.")
 
+        st.info("Model: XGBoost (Tuned) | AUC: 0.94")
+
+    except Exception as e:
+        st.error(f"⚠️ Prediction failed: {str(e)}")
+        st.write("Please check that your model and encoder files are in the correct directory.")
+        
     # Optional: Show input data
     with st.expander("View submitted data"):
         st.write(input_data)
