@@ -75,3 +75,5 @@ weighted avg       0.95      0.96      0.95       667
 📬 Contact
 
 For questions or collaboration, reach out to me on [www.linkedin.com/in/shallom-githui] or via email at [shallomgithui59@gmail.com].
+
+Live Demo on Streamlit: [https://xgboost-predict.streamlit.app/]
